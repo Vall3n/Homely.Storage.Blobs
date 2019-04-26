@@ -1,0 +1,53 @@
+name: $(Year:yyyy).$(Month).$(DayOfMonth).$(Rev:r)
+pool:
+  vmImage: 'Ubuntu 16.04'
+
+variables:
+  buildConfiguration: 'Release'
+
+trigger:
+  branches:
+    include:
+    - master
+    - refs/tags/*
+pr:
+  autoCancel: false
+
+steps:
+
+- powershell: |
+    $buildVersion = $env:BUILD_BUILDNUMBER
+    Write-Host "##vso[task.setvariable variable=assemblyVersion]$buildVersion"
+    Write-Host "Assembly version is" $buildVersion
+  displayName: 'Set the assembly version number.'
+    
+- powershell: |
+    $tagVersion = $env:BUILD_SOURCEBRANCH.remove(0, 10)
+    Write-Host "##vso[task.setvariable variable=assemblyVersion]$tagVersion"
+    Write-Host "*** TAG OVERWRITE :: Assembly version is" $tagVersion
+  displayName: 'Update assembly version to be the Tag value.'
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+
+- script: docker run -p 10000:10000 -d --rm mcr.microsoft.com/azurestorage-azurite
+  displayName: 'docker run -> azurite (Azure Storage emulator)'
+
+- script: dotnet build --configuration $(buildConfiguration) -p:Version=$(assemblyVersion)
+  displayName: 'dotnet build'
+
+- script: docker ps
+  displayName: 'docker process -> check if Azurite is running'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: test
+    projects: '**/tests/*/*.csproj'
+    arguments: '--configuration $(buildConfiguration) -p:Version=$(assemblyVersion) --no-build'
+  displayName: 'dotnet test'  
+    
+- script: dotnet pack --configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) -p:Version=$(assemblyVersion) -v normal --no-build
+  displayName: 'dotnet pack [i.e. create nuget package]'
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish artifacts'
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
