@@ -125,7 +125,7 @@ namespace Homely.Storage.Blobs.Tests
             existingBlob.Length.ShouldBeGreaterThan(0);
         }
 
-        [Fact]
+        [Fact(Skip = "Azurite is unable to handle 'copy'ing Uri's. As such, the test will fail because Azurite throws an exception.")]
         public async Task GivenSomeUri_AddAsync_AddsTheUri()
         {
             // Arrange.
