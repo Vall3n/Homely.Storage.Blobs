@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Extensions.Logging;
 using MoreLinq;
@@ -322,12 +322,11 @@ namespace Homely.Storage.Blobs
             return blobIds;
         }
 
-
         private async Task<CloudBlobContainer> CreateCloudBlobContainer(BlobContainerPermissions permissions)
         {
             // TODO: Add POLLY retrying.
 
-            if (!CloudStorageAccount.TryParse(_connectionString, out CloudStorageAccount storageAccount))
+            if (!CloudStorageAccount.TryParse(_connectionString, out var storageAccount))
             {
                 _logger.LogError($"Failed to create an Azure Storage Account for the provided credentials. Check the connection string in the your configuration (appsettings or environment variables, etc).");
                 throw new Exception("Failed to create an Azure Storage Account.");
