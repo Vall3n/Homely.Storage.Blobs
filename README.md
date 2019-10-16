@@ -10,7 +10,7 @@ A common pattern when working with blobs is to serialize/deserialize complex obj
 ### Azure Storage only?
 The library is (currently) only targetting Azure Storage Blobs. Why not other blobs like AWS? Because:
 
-- We (@Homely) don't work with AWS.
+- We (@Homely) mainly work with Azure Storage and only use AWS S3 for some specific scenario's.
 - There are [docker images](https://hub.docker.com/r/arafato/azurite/) for Azure Storage (for localhost development) - so we don't need other implementations @Homely.
 - We will accept Pull Requeust for other platforms, though :heart:
 
@@ -39,6 +39,8 @@ await blob.DeleteAsync(blobId);
 
 ### Methods
 
+*NOTE: `CancellationTokens` have been omitted from all examples to keep the samples clean.*
+
 - `AddAsync` : this will accept any object, Byte array, Stream or Uri. If it is a simple object (like a `string` or `int`) it will just a insert that value _as is_ into the blob. Otherwise, it will serialize the object to JSON if it's _not_ a Byte/Stream/Uri.
 
 e.g. 
@@ -55,7 +57,8 @@ You can also specify the Id of the blob you wish to store in the container:
 
 e.g.
 ```
-await blob.AddAsync(new Foo(), "user-1");
+var blobId = "user-1";
+await blob.AddAsync(new Foo(), blobId);
 ```
 
 Also, you can add a collection of items in one simple call:
@@ -68,17 +71,26 @@ var foos = GetFoosFromSomewhere(); // Returns 100 foo's.
 var blobIds = blob.AddBatchAsync(foos, 10); // Adds 100 foo's in batches of 10.
 ```
 
-- `GetAsync` : this will retrieve a stream of the unknown object type. Then do as you please with it.
-- `GetAsync<Foo>` : this will retrieve the item from the blob then attempt to deserialize the message into that complex object.
+- `GetAsync` : this will populate a provided stream of the unknown object type. Then do as you please with it.
+- `GetAsync<Foo>` : this will retrieve the item from the blob then attempt to deserialize the message into that complex object. Optionally - you can ask to retrieve some meta data / properties (like `etag` or `lastModified`).
 
 e.g.
 
 ```
-// No 'Type' provided. Assumption: message content is not json and will therefore not be deserialized.
-var myMessage = await blob.GeteAsync("some-blob-id"); // Stream to unknown blob type.
+// No 'Type' provided. Assumption: message content is not json and will therefore not be deserialized. As such, the content needs to be untouched.
+using (var memoryStream = new MemoryStream())
+{
+    // Stream to unknown blob type.
+    var doesExist = await blob.GetAsync("some-blob-id", memoryStream); 
+}
 
 // Type is provided.
 var myFoo = await blob.GetAsync<Foo>("some-foo-Id");  // A foo instance populated with it's respective blob information.
+
+// Also retrieve meta data / properties.
+var metaDataOrProperties = new List<string> { "etag", "lastmodified" };
+var blobData = await blob.GetAsync<Foo>("some-foo-Id", metaDataOrProperties);
+Console.WriteLine(blobData.MetaData[0]); // eTag.
 ```
 
 - `DeleteAsync` : removes the blob from the container.

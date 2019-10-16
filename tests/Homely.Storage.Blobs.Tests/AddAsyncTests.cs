@@ -1,8 +1,9 @@
-﻿using Homely.Testing;
+using Homely.Testing;
 using Shouldly;
 using System;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -21,7 +22,7 @@ namespace Homely.Storage.Blobs.Tests
 
             // Assert.
             blobId.ShouldNotBeNullOrEmpty();
-            var blob = await azureBlob.GetAsync<SomeFakeUser>(blobId);
+            var blob = await azureBlob.GetAsync<SomeFakeUser>(blobId, default);
             blob.ShouldLookLike(TestUser);
         }
 
@@ -37,7 +38,7 @@ namespace Homely.Storage.Blobs.Tests
 
             // Assert.
             blobId.ShouldNotBeNullOrEmpty();
-            var blob = await azureBlob.GetAsync<string>(blobId);
+            var blob = await azureBlob.GetAsync<string>(blobId, default);
             blob.ShouldLookLike(text);
         }
 
@@ -53,13 +54,13 @@ namespace Homely.Storage.Blobs.Tests
                 Age = DateTime.Now.Second
             };
             var originalBlobId = await azureBlob.AddAsync(user);
-            
+
             // Act.
             var blobId = await azureBlob.AddAsync(TestUser, originalBlobId); // BlobId to associate, exists.
 
             // Assert.
             blobId.ShouldNotBeNullOrEmpty();
-            var blob = await azureBlob.GetAsync<SomeFakeUser>(blobId);
+            var blob = await azureBlob.GetAsync<SomeFakeUser>(blobId, default);
             blob.ShouldLookLike(TestUser);
         }
 
@@ -76,7 +77,7 @@ namespace Homely.Storage.Blobs.Tests
 
             // Assert.
             blobId.ShouldNotBeNullOrWhiteSpace();
-            var blob = await azureBlob.GetAsync<string>(blobId);
+            var blob = await azureBlob.GetAsync<string>(blobId, default);
             blob.ShouldLookLike(asciiText);
         }
 
@@ -91,20 +92,12 @@ namespace Homely.Storage.Blobs.Tests
             var blobId = await azureBlob.AddAsync(bytes);
 
             // Assert.
-            var existingBlob = await azureBlob.GetAsync(blobId);
-            existingBlob.ShouldNotBeNull();
-
-            byte[] existingBytes;
-            using (var ms = new MemoryStream())
+            using (var memoryStream = new MemoryStream())
             {
-                existingBlob.Position = 0;
-                existingBlob.CopyTo(ms);
-                existingBytes = ms.ToArray();
+                var result = await azureBlob.GetAsync(blobId, memoryStream);
+                result.ShouldBeTrue();
+                memoryStream.Length.ShouldBe(bytes.Length);
             }
-
-            existingBytes.Length.ShouldBe(bytes.Length);
-
-            existingBlob.Dispose();
         }
 
         [Fact]
@@ -113,6 +106,7 @@ namespace Homely.Storage.Blobs.Tests
             // Arrange.
             var azureBlob = await GetAzureBlobAsync();
             var stream = File.OpenRead(TestImageName);
+            var streamLength = stream.Length;
 
             // Act.
             var blobId = await azureBlob.AddAsync(stream);
@@ -120,9 +114,12 @@ namespace Homely.Storage.Blobs.Tests
             // Assert.
             stream.Dispose();
 
-            var existingBlob = await azureBlob.GetAsync(blobId);
-            existingBlob.ShouldNotBeNull();
-            existingBlob.Length.ShouldBeGreaterThan(0);
+            using (var memoryStream = new MemoryStream())
+            {
+                var result = await azureBlob.GetAsync(blobId, memoryStream);
+                result.ShouldBeTrue();
+                memoryStream.Length.ShouldBe(streamLength);
+            }
         }
 
         [Fact(Skip = "Azurite is unable to handle 'copy'ing Uri's. As such, the test will fail because Azurite throws an exception.")]
@@ -136,9 +133,12 @@ namespace Homely.Storage.Blobs.Tests
             var blobId = await azureBlob.AddAsync(uri);
 
             // Assert.
-            var existingBlob = await azureBlob.GetAsync(blobId);
-            existingBlob.ShouldNotBeNull();
-            existingBlob.Length.ShouldBeGreaterThan(0);
+            using (var memoryStream = new MemoryStream())
+            {
+                var result = await azureBlob.GetAsync(blobId, memoryStream);
+                result.ShouldBeTrue();
+                memoryStream.Length.ShouldBeGreaterThan(0);
+            }
         }
     }
 }

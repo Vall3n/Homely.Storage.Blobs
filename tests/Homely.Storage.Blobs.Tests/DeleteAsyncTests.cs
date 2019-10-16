@@ -1,6 +1,5 @@
-using Shouldly;
-using System;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Homely.Storage.Blobs.Tests
@@ -12,14 +11,13 @@ namespace Homely.Storage.Blobs.Tests
         {
             // Arrange.
             var azureBlob = await GetAzureBlobAsync();
-            var blobId = await SetupDeleteTestsAsync(azureBlob);
 
             // Act.
-            await azureBlob.DeleteAsync(blobId);
+            await azureBlob.DeleteAsync(TestClassInstanceName);
 
             // Assert.
-            var blob = await azureBlob.GetAsync(blobId);
-            blob.ShouldBeNull();
+            var user = await azureBlob.GetAsync<SomeFakeUser>(TestClassInstanceName, default);
+            user.ShouldBeNull();
         }
 
         [Fact]
@@ -27,28 +25,14 @@ namespace Homely.Storage.Blobs.Tests
         {
             // Arrange.
             var azureBlob = await GetAzureBlobAsync();
-            var blobId = await SetupDeleteTestsAsync(azureBlob);
+            const string blobName = "aaa";
 
             // Act.
-            await azureBlob.DeleteAsync(blobId);
+            await azureBlob.DeleteAsync(blobName);
 
             // Assert.
-            var blob = await azureBlob.GetAsync(blobId);
-            blob.ShouldBeNull();
-        }
-
-        private async Task<string> SetupDeleteTestsAsync(IBlob blob)
-        {
-            if (blob == null)
-            {
-                throw new ArgumentNullException(nameof(blob));
-            }
-
-            var blobId = Guid.NewGuid().ToString();
-
-            await blob.AddAsync(TestUser, blobId);
-
-            return blobId;
+            var user = await azureBlob.GetAsync<SomeFakeUser>(blobName, default);
+            user.ShouldBeNull();
         }
     }
 }

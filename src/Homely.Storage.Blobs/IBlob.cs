@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -13,28 +13,44 @@ namespace Homely.Storage.Blobs
         /// Streams an item from Azure Blob storage.
         /// </summary>
         /// <remarks>No custom json-deserialization occurs here. Just raw retrevial via stream.</remarks>
-        /// <param name="blobName">string: The identifier/name of this content to be stored on Azure.</param>
+        /// <param name="blobId">string: The identifier/name of this content to be stored on Azure.</param>
+        /// <param name="target">Stream: stream to contain the blob data.</param>
         /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
         /// <returns>A System.Threading.Tasks.Task object that represents the asynchronous operation.</returns>
-        Task<Stream> GetAsync(string blobName, CancellationToken cancellationToken = default);
+        Task<bool> GetAsync(string blobId, 
+                            Stream target,
+                            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves an item from Azure Blob storage.
         /// </summary>
         /// <remarks>The item must have been json-serialized otherwise it cannot be deserialized properly.</remarks>
         /// <typeparam name="T">Type of item.</typeparam>
-        /// <param name="blobName">string: The identifier/name of this content to be stored on Azure.</param>
+        /// <param name="blobId">string: The identifier/name of this content to be stored on Azure.</param>
         /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
         /// <returns>A System.Threading.Tasks.Task object that represents the asynchronous operation.</returns>
-        Task<T> GetAsync<T>(string blobName, CancellationToken cancellationToken = default);
+        Task<T> GetAsync<T>(string blobId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Retrieves an item from Azure Blob storage.
+        /// </summary>
+        /// <remarks>The item must have been json-serialized otherwise it cannot be deserialized properly.</remarks>
+        /// <typeparam name="T">Type of item.</typeparam>
+        /// <param name="blobId">string: The identifier/name of this content to be stored on Azure.</param>
+        /// <param name="existingPropertiesOrMetaData">IList&lt;string&gt;: collection of keys to extract from the blob's properties and/or custom meta data.</param>
+        /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
+        /// <returns>A System.Threading.Tasks.Task object that represents the asynchronous operation.</returns>
+        Task<BlobData<T>> GetAsync<T>(string blobId, 
+                                      IList<string> existingPropertiesOrMetaData = default, 
+                                      CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Deletes an item from Azure blob storage.
         /// </summary>
-        /// <param name="blobName">Unique blob identifier to delete.</param>
+        /// <param name="blobId">Unique blob identifier to delete.</param>
         /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
         /// <returns>A System.Threading.Tasks.Task object that represents the asynchronous operation.</returns>
-        Task DeleteAsync(string blobName, CancellationToken cancellationToken = default);
+        Task DeleteAsync(string blobId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// This adds an object to an Azure Blob Storage by serializing the object to json

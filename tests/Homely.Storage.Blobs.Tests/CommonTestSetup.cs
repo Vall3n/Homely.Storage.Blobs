@@ -1,7 +1,7 @@
-﻿using Microsoft.Extensions.Logging.Abstractions;
-using Newtonsoft.Json;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Homely.Storage.Blobs.Tests
 {
@@ -22,14 +22,16 @@ namespace Homely.Storage.Blobs.Tests
 
             if (setupInitialBlobData)
             {
+                var cancellationToken = new CancellationToken();
+
                 // Do we have the image already?
-                if (await blob.GetAsync(TestImageName) == null)
+                if (await blob.GetAsync<string>(TestImageName, cancellationToken) == null)
                 {
                     var image = await File.ReadAllBytesAsync("2018-tesla-model-x-p100d.jpg");
                     await blob.AddAsync(image, TestImageName);
                 }
 
-                if (await blob.GetAsync<SomeFakeUser>(TestClassInstanceName) == null)
+                if (await blob.GetAsync<SomeFakeUser>(TestClassInstanceName, cancellationToken) == null)
                 {
                     await blob.AddAsync(TestUser, TestClassInstanceName);
                 }

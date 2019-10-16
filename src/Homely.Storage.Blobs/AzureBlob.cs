@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,7 +48,7 @@ namespace Homely.Storage.Blobs
             _container = new Lazy<Task<CloudBlobContainer>>(() => CreateCloudBlobContainer(permissions));
         }
 
-        /// <inheritdoc  />
+        /// <inheritdoc />
         public string Name { get; }
 
         private Task<CloudBlobContainer> Container
@@ -55,45 +56,59 @@ namespace Homely.Storage.Blobs
             get { return _container.Value; }
         }
 
-        /// <inheritdoc  />
-        public async Task<Stream> GetAsync(string blobName,
-                                           CancellationToken cancellationToken = default)
+        /// <inheritdoc />
+        public async Task<bool> GetAsync(string blobId,
+                                         Stream stream,
+                                         CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(blobName))
-            {
-                throw new ArgumentException(nameof(blobName));
-            }
+            await GetBlobDataAsync(blobId, stream, cancellationToken);
 
-            var blob = (await Container).GetBlockBlobReference(blobName);
-            if (blob == null ||
-                !await blob.ExistsAsync(cancellationToken))
-            {
-                return null;
-            }
-
-            var stream = new MemoryStream();
-
-            await blob.DownloadToStreamAsync(stream, cancellationToken);
-
-            return stream;
+            return stream.Length > 0;
         }
 
         /// <inheritdoc />
-        public async Task<T> GetAsync<T>(string blobName,
+        public async Task<T> GetAsync<T>(string blobId,
                                          CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(blobName))
+            var blobData = await GetAsync<T>(blobId, null, cancellationToken);
+            if (blobData == null)
             {
-                throw new ArgumentException(nameof(blobName));
+                return default;
             }
+
+            return blobData.Data;
+        }
+
+        /// <inheritdoc />
+        public async Task<BlobData<T>> GetAsync<T>(string blobId, 
+                                                   IList<string> existingPropertiesOrMetaData = default, 
+                                                   CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(blobId))
+            {
+                throw new ArgumentException(nameof(blobId));
+            }
+
+            var result = new BlobData<T>();
 
             string data;
 
-            using (var stream = await GetAsync(blobName, cancellationToken))
+            using (var stream = new MemoryStream())
             {
-                if (stream == null)
+                var blobData = await GetBlobDataAsync(blobId, stream, cancellationToken);
+
+                if (stream.Length <= 0)
                 {
+                    //  Blob didn't exist or the stream failed to get connected.
                     return default;
+                }
+
+                if (existingPropertiesOrMetaData != null)
+                {
+                    // Try extracting some meta data or blob properties.
+                    result.MetaData = ExtractMetaDataAndProperties(blobData.BlobProperties,
+                                                                   blobData.MetaData,
+                                                                   existingPropertiesOrMetaData);
                 }
 
                 stream.Seek(0, SeekOrigin.Begin);
@@ -103,32 +118,49 @@ namespace Homely.Storage.Blobs
                 }
             }
 
+
             if (string.IsNullOrWhiteSpace(data))
             {
-                return default;
+                return null;
             }
 
             if (typeof(T).IsASimpleType())
             {
                 // Assumption: Item was stored 'raw' and not serialized as Json.
                 //             No need to do anything special, just use the current data.
-                return (T)Convert.ChangeType(data, typeof(T));
+                result.Data = (T)Convert.ChangeType(data, typeof(T));
+            }
+            else
+            {
+                // Assumption: Item was probably serialized (because it was not a simple type), so we now deserialize it.
+                try
+                {
+                    result.Data = JsonConvert.DeserializeObject<T>(data);
+                }
+                catch(Exception exception)
+                {
+                    var errorData = data?.Length >= 15
+                        ? data.Substring(0, 12) + "..." // 15 - 3 == 12. 3 == the 3x dots. e.g. "some longer ..."
+                        : data
+                        ?? "- no data -";
+                    var errorLength = data?.Length ?? 0;
+                    throw new JsonReaderException($"Failed to deserialize the json data [{errorData}], length: [{errorLength}].", exception);
+                }
             }
 
-            // Assumption: Item was probably serialized (because it was not a simple type), so we now deserialize it.
-            return JsonConvert.DeserializeObject<T>(data);
+            return result;
         }
 
         /// <inheritdoc />
-        public async Task DeleteAsync(string blobName,
+        public async Task DeleteAsync(string blobId,
                                       CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(blobName))
+            if (string.IsNullOrWhiteSpace(blobId))
             {
-                throw new ArgumentException(nameof(blobName));
+                throw new ArgumentException(nameof(blobId));
             }
 
-            var blob = (await Container).GetBlockBlobReference(blobName);
+            var blob = (await Container).GetBlockBlobReference(blobId);
             if (blob != null &&
                 await blob.ExistsAsync(cancellationToken))
             {
@@ -351,6 +383,69 @@ namespace Homely.Storage.Blobs
             }
 
             return cloudBlobContainer;
+        }
+
+        private async Task<(BlobProperties BlobProperties,
+                            IDictionary<string, string> MetaData)> GetBlobDataAsync(string blobName,
+                                                                                    Stream stream,
+                                                                                    CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(blobName))
+            {
+                throw new ArgumentException(nameof(blobName));
+            }
+
+            var blob = (await Container).GetBlockBlobReference(blobName);
+            if (blob == null ||
+                !await blob.ExistsAsync(cancellationToken))
+            {
+                return (null, null);
+            }
+
+            await blob.DownloadToStreamAsync(stream, cancellationToken);
+
+            return (blob.Properties, blob.Metadata);
+        }
+
+        private IDictionary<string, object> ExtractMetaDataAndProperties(BlobProperties blobProperties, 
+                                                                         IDictionary<string, string> metaData,
+                                                                         IList<string> existingPropertiesOrMetaData)
+        {
+            if (blobProperties is null)
+            {
+                throw new ArgumentNullException(nameof(blobProperties));
+            }
+
+            if (existingPropertiesOrMetaData is null)
+            {
+                throw new ArgumentNullException(nameof(existingPropertiesOrMetaData));
+            }
+
+            var result = new Dictionary<string, object>();
+
+            // Copy over any properties we expect.
+            foreach (var key in existingPropertiesOrMetaData)
+            {
+                var property = typeof(BlobProperties).GetProperty(key, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                if (property != null)
+                {
+                    // The key is a blob property.
+                    result.Add(key, property.GetValue(blobProperties));
+                }
+                else if (metaData?.Any() == true &&
+                    metaData.ContainsKey(key))
+                {
+                    // We have some MetaData AND the key is some MetaData.
+                    result.Add(key, metaData[key]);
+                }
+                else
+                {
+                    // Expected key doesn't exist in either. Not good :(
+                    throw new Exception($"BlobProperties and MetaData doesn't contain the expected key: [{key}]. At least one of them should contain that key.");
+                }
+            }
+            
+            return result;
         }
     }
 }

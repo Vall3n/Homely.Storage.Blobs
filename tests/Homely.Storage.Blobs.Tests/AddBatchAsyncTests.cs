@@ -1,4 +1,4 @@
-﻿using Shouldly;
+using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -15,7 +15,7 @@ namespace Homely.Storage.Blobs.Tests
             // Arrange.
             var azureBlob = await GetAzureBlobAsync();
             var users = new List<SomeFakeUser>();
-            for(int i = 0; i < 100; i++)
+            for (var i = 0; i < 100; i++)
             {
                 users.Add(new SomeFakeUser
                 {
@@ -30,10 +30,10 @@ namespace Homely.Storage.Blobs.Tests
             // Assert.
             blobIds.ShouldNotBeEmpty();
             blobIds.Count.ShouldBe(100);
-            foreach(var blobId in blobIds)
+            foreach (var blobId in blobIds)
             {
-                var existingUser = await azureBlob.GetAsync<SomeFakeUser>(blobId);
-                users.ShouldContain(x => x.Name == existingUser.Name && 
+                var existingUser = await azureBlob.GetAsync<SomeFakeUser>(blobId, default);
+                users.ShouldContain(x => x.Name == existingUser.Name &&
                                          x.Age == existingUser.Age);
             }
         }
@@ -64,7 +64,7 @@ namespace Homely.Storage.Blobs.Tests
             blobIds.Count.ShouldBe(100);
             foreach (var blobId in blobIds)
             {
-                var existingUser = await azureBlob.GetAsync<SomeFakeUser>(blobId);
+                var existingUser = await azureBlob.GetAsync<SomeFakeUser>(blobId, default);
                 existingUser.Name.ShouldBe(asciiText);
                 users.ShouldContain(x => x.Age == existingUser.Age);
             }
