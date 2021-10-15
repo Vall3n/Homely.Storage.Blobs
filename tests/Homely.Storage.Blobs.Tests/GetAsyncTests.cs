@@ -24,13 +24,13 @@ namespace Homely.Storage.Blobs.Tests
         public async Task GivenAnExistingStream_GetAsync_ReturnsTrue()
         {
             // Arrange.
-            var azureBlob = await GetAzureBlobAsync();
+            var (azureBlob, imageBlobId, _) = await SetupAzureBlobAsync();
             var fileInfo = new FileInfo(TestImageName);
 
             using (var stream = new MemoryStream())
             {
                 // Act.
-                var result = await azureBlob.GetAsync(TestImageName, stream);
+                var result = await azureBlob.GetAsync(imageBlobId, stream);
 
                 // Assert.
                 result.ShouldBeTrue();
@@ -61,10 +61,10 @@ namespace Homely.Storage.Blobs.Tests
         public async Task GivenAnExistingClassInstance_GetAsyncGeneric_ReturnsTheInstance()
         {
             // Arrange.
-            var azureBlob = await GetAzureBlobAsync();
+            var (azureBlob, _, testUserBlobId) = await SetupAzureBlobAsync();
 
             // Act.
-            var user = await azureBlob.GetAsync<SomeFakeUser>(TestClassInstanceName, default);
+            var user = await azureBlob.GetAsync<SomeFakeUser>(testUserBlobId, default);
 
             // Assert.
             user.ShouldNotBeNull();
@@ -89,10 +89,10 @@ namespace Homely.Storage.Blobs.Tests
         public async Task GivenAnExistingClassInstanceAndSomePropertiesOrMetaData_GetAsyncGeneric_ReturnsTheInstance(IList<string> existingPropertiesOrMetaData)
         {
             // Arrange.
-            var azureBlob = await GetAzureBlobAsync();
+            var (azureBlob, _, testUserBlobId) = await SetupAzureBlobAsync();
 
             // Act.
-            var result = await azureBlob.GetAsync<SomeFakeUser>(TestClassInstanceName, existingPropertiesOrMetaData);
+            var result = await azureBlob.GetAsync<SomeFakeUser>(testUserBlobId, existingPropertiesOrMetaData);
 
             // Assert.
             result.ShouldNotBeNull();
@@ -105,11 +105,11 @@ namespace Homely.Storage.Blobs.Tests
         {
             // Arrange.
             const string missingKey = "abcd";
-            var azureBlob = await GetAzureBlobAsync();
+            var (azureBlob, _, testUserBlobId) = await SetupAzureBlobAsync();
             var missingPropertiesOrMetaData = new List<string> { missingKey };
 
             // Act.
-            var exception = await Should.ThrowAsync<Exception>(() => azureBlob.GetAsync<SomeFakeUser>(TestClassInstanceName, missingPropertiesOrMetaData));
+            var exception = await Should.ThrowAsync<Exception>(() => azureBlob.GetAsync<SomeFakeUser>(testUserBlobId, missingPropertiesOrMetaData));
 
             // Assert.
             exception.ShouldNotBeNull();
@@ -118,7 +118,7 @@ namespace Homely.Storage.Blobs.Tests
 
         [Theory]
         [InlineData("some text", "some text")]
-        [InlineData("some longer text", "some longer ...")]
+        [InlineData("some longer text abcd qwertyuiop asdfghjkl; zxcvbnm,./", "some longer text abcd qwertyuiop asdfghjkl; zxc...")]
         public async Task GivenAnExistingItemInStorageButIsNotInJsonFormat_GetAsyncGeneric_ThrowsAnException(string text, string expectedErrorText)
         {
             // Arrange.
@@ -133,7 +133,7 @@ namespace Homely.Storage.Blobs.Tests
             }
 
             // Act.
-            var exception = await Should.ThrowAsync<Exception>( () => azureBlob.GetAsync<SomeFakeUser>(blobId, default));
+            var exception = await Should.ThrowAsync<Exception>(() => azureBlob.GetAsync<SomeFakeUser>(blobId, default));
 
             // Assert.
             exception.ShouldNotBeNull();

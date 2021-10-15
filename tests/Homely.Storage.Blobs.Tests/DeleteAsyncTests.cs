@@ -10,13 +10,13 @@ namespace Homely.Storage.Blobs.Tests
         public async Task GivenAnExistingBlob_DeleteAsync_DeletesTheBlob()
         {
             // Arrange.
-            var azureBlob = await GetAzureBlobAsync();
+            var (azureBlob, imageBlobId, _) = await SetupAzureBlobAsync();
 
             // Act.
-            await azureBlob.DeleteAsync(TestClassInstanceName);
+            await azureBlob.DeleteAsync(imageBlobId);
 
             // Assert.
-            var user = await azureBlob.GetAsync<SomeFakeUser>(TestClassInstanceName, default);
+            var user = await azureBlob.GetAsync<SomeFakeUser>(imageBlobId, default);
             user.ShouldBeNull();
         }
 

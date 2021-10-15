@@ -139,8 +139,8 @@ namespace Homely.Storage.Blobs
                 }
                 catch(Exception exception)
                 {
-                    var errorData = data?.Length >= 15
-                        ? data.Substring(0, 12) + "..." // 15 - 3 == 12. 3 == the 3x dots. e.g. "some longer ..."
+                    var errorData = data?.Length >= 50
+                        ? data.Substring(0, 50 - 3) + "..." // -3 because the 3x dots. e.g. "some longer ..."
                         : data
                         ?? "- no data -";
                     var errorLength = data?.Length ?? 0;

@@ -1,6 +1,6 @@
 name: $(Year:yyyy).$(Month).$(DayOfMonth).$(Rev:r)
 pool:
-  vmImage: 'Ubuntu 16.04'
+  vmImage: 'ubuntu-latest'
 
 variables:
   buildConfiguration: 'Release'
@@ -20,7 +20,7 @@ steps:
     Write-Host "##vso[task.setvariable variable=assemblyVersion]$buildVersion"
     Write-Host "Assembly version is" $buildVersion
   displayName: 'Set the assembly version number.'
-    
+
 - powershell: |
     $tagVersion = $env:BUILD_SOURCEBRANCH.remove(0, 10)
     Write-Host "##vso[task.setvariable variable=assemblyVersion]$tagVersion"
@@ -42,8 +42,8 @@ steps:
     command: test
     projects: '**/tests/*/*.csproj'
     arguments: '--configuration $(buildConfiguration) -p:Version=$(assemblyVersion) --no-build'
-  displayName: 'dotnet test'  
-    
+  displayName: 'dotnet test'
+
 - script: dotnet pack --configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) -p:Version=$(assemblyVersion) -v normal --no-build
   displayName: 'dotnet pack [i.e. create nuget package]'
   condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
