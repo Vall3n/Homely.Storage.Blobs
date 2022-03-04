@@ -1,6 +1,7 @@
 using Homely.Testing;
 using Shouldly;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -140,5 +141,68 @@ namespace Homely.Storage.Blobs.Tests
                 memoryStream.Length.ShouldBeGreaterThan(0);
             }
         }
+
+        [Theory]
+        [InlineData(CacheControlType.NoCache)]
+        [InlineData(CacheControlType.NoStore)]
+        public async Task GivenAnObjectThatDoesNotExistAndCacheControlIsSet_AddAsync_AddsTheObjectAndTheCacheIsSet(CacheControlType expectedCacheControl)
+        {
+            // Arrange.
+            var azureBlob = await GetAzureBlobAsync();
+
+            // Act.
+            var blobId = await azureBlob.AddAsync(TestUser, cacheControlType: expectedCacheControl);
+
+            // Assert.
+            blobId.ShouldNotBeNullOrEmpty();
+            var blob = await azureBlob.GetAsync<SomeFakeUser>(blobId, CacheBlobPropertyList, default);
+            blob.Data.ShouldLookLike(TestUser);
+            blob.MetaData.ShouldContainKey("CacheControl");
+
+            var cacheControlResult = CacheControlTypeHelper.GetCacheControlType(blob.MetaData["CacheControl"].ToString());
+
+            cacheControlResult.ShouldBe(expectedCacheControl);
+        }
+
+        [Fact]
+        public async Task GivenAnObjectThatDoesNotExistAndCacheControlIsNotSet_AddAsync_AddsTheObjectAndTheCacheIsNotSet()
+        {
+            // Arrange.
+            var azureBlob = await GetAzureBlobAsync();
+
+            // Act.
+            var blobId = await azureBlob.AddAsync(TestUser);
+
+            // Assert.
+            blobId.ShouldNotBeNullOrEmpty();
+            var blob = await azureBlob.GetAsync<SomeFakeUser>(blobId, CacheBlobPropertyList, default);
+            blob.Data.ShouldLookLike(TestUser);
+            blob.MetaData.ShouldContainKey("CacheControl");
+
+            blob.MetaData["CacheControl"].ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task GivenAnObjectWhichHasUTF8CharactersButWeWantToAddItAsAsciiAndWithCacheControl_AddAsync_AddsTheObjectAsAsciiAndCacheControlSet()
+        {
+            // Arrange.
+            var azureBlob = await GetAzureBlobAsync();
+            const string utf8Text = "chárêctërs";
+            const string asciiText = "ch?r?ct?rs"; // NOTE: UTF8 characters are now 'lost'.
+
+            // Act.
+            var blobId = await azureBlob.AddAsync(utf8Text, null, Encoding.ASCII, cacheControlType: CacheControlType.NoStore);
+
+            // Assert.
+            blobId.ShouldNotBeNullOrWhiteSpace();
+            var blob = await azureBlob.GetAsync<string>(blobId, CacheBlobPropertyList, default);
+            blob.Data.ShouldLookLike(asciiText);
+            blob.MetaData.ShouldContainKey("CacheControl");
+
+            CacheControlType cacheControlResult = CacheControlTypeHelper.GetCacheControlType(blob.MetaData["CacheControl"].ToString());
+
+            cacheControlResult.ShouldBe(CacheControlType.NoStore);
+        }
+
     }
 }

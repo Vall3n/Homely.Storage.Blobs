@@ -59,10 +59,12 @@ namespace Homely.Storage.Blobs
         /// <remarks>Default encoding is set as UTF8.<br/>The item to store must be serializable.</remarks>
         /// <param name="item">object: the item to store in the azure blob.</param>
         /// <param name="blobId">Optional. The identifier/name of this content to be stored on Azure. If not supplied, then a new <code>Guid</code> will be used.</param>
+        /// <param name="cacheControlType">Optional. Allows the ability to set the cache-control of the blob content</param>
         /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
         /// <returns>string: blob name.</returns>
         Task<string> AddAsync(object item, 
                               string blobId = null,
+                              CacheControlType cacheControlType = CacheControlType.None,
                               CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -73,11 +75,13 @@ namespace Homely.Storage.Blobs
         /// <param name="item">object: the item to store in the azure blob.</param>
         /// <param name="blobId">The identifier/name of this content to be stored on Azure. If <code>null</code>, then a new <code>Guid</code> will be used.</param>
         /// <param name="encoding">The encoding type to serialize the <code>item</code>.</param>
+        /// <param name="cacheControlType">Optional. Allows the ability to set the cache-control of the blob content</param>
         /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
         /// <returns>string: blob name.</returns>
         Task<string> AddAsync(object item,
                               string blobId,
                               Encoding encoding,
+                              CacheControlType cacheControlType = CacheControlType.None,
                               CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -86,11 +90,13 @@ namespace Homely.Storage.Blobs
         /// <param name="content">byte[]: source item as a byte array.</param>
         /// <param name="blobId">Optional. The identifier/name of this content to be stored on Azure. If not supplied, then a new <code>Guid</code> will be used.</param>
         /// <param name="contentType">Optional. What type of content exists in the file. If none is provided, then Azure defaults this value to <code>application/octet-stream</code>.</param>
+        /// <param name="cacheControlType">Optional. Allows the ability to set the cache-control of the blob content</param>
         /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
         /// <returns>string: blob name.</returns>
         Task<string> AddAsync(byte[] content,
                               string blobId = null,
                               string contentType = null,
+                              CacheControlType cacheControlType = CacheControlType.None,
                               CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -99,11 +105,13 @@ namespace Homely.Storage.Blobs
         /// <param name="content">stream: source item as a stream.</param>
         /// <param name="blobId">Optional. The identifier/name of this content to be stored on Azure. If not supplied, then a new <code>Guid</code> will be used.</param>
         /// <param name="contentType">Optional. What type of content exists in the file. If none is provided, then Azure defaults this value to <code>application/octet-stream</code>.</param>
+        /// <param name="cacheControlType">Optional. Allows the ability to set the cache-control of the blob content</param>
         /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
         /// <returns>string: blob name.</returns>
         Task<string> AddAsync(Stream content,
                               string blobId = null,
                               string contentType = null,
+                              CacheControlType cacheControlType = CacheControlType.None,
                               CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -112,11 +120,13 @@ namespace Homely.Storage.Blobs
         /// <param name="sourceUri">string: source URI to upload from.</param>
         /// <param name="blobId">Optional. The identifier/name of this content to be stored on Azure. If not supplied, then a new <code>Guid</code> will be used.</param>
         /// <param name="contentType">Optional. What type of content exists in the file. If none is provided, then Azure defaults this value to <code>application/octet-stream</code>.</param>
+        /// <param name="cacheControlType">Optional. Allows the ability to set the cache-control of the blob content</param>
         /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
         /// <returns>string: blob name.</returns>
         Task<string> AddAsync(Uri sourceUri,
                               string blobId = null,
                               string contentType = null,
+                              CacheControlType cacheControlType = CacheControlType.None,
                               CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -127,11 +137,13 @@ namespace Homely.Storage.Blobs
         /// <typeparam name="T">Type of item.</typeparam>
         /// <param name="items">object[]: the items to store in the azure blob.</param>
         /// <param name="batchSize">How many items to store in a single batch.</param>
+        /// <param name="cacheControlType">Optional. Allows the ability to set the cache-control of the blob content</param>
         /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
         /// <returns>string: blob name.</returns>
         /// <remarks>BatchSize defaults to 25 for no particular reason. Just felt ok...</remarks>
         Task<IList<string>> AddBatchAsync<T>(ICollection<T> items,
                                              int batchSize = 25,
+                                             CacheControlType cacheControlType = CacheControlType.None,
                                              CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -143,12 +155,14 @@ namespace Homely.Storage.Blobs
         /// <param name="items">object[]: the items to store in the azure blob.</param>
         /// <param name="encoding">The encoding type to serialize the <code>item</code>.</param>
         /// <param name="batchSize">How many items to store in a single batch.</param>
+        /// <param name="cacheControlType">Optional. Allows the ability to set the cache-control of the blob content</param>
         /// <param name="cancellationToken">A System.Threading.CancellationToken to observe while waiting for a task to complete.</param>
         /// <returns>string: blob name.</returns>
         /// <remarks>BatchSize defaults to 25 for no particular reason. Just felt ok...</remarks>
         Task<IList<string>> AddBatchAsync<T>(ICollection<T> items,
                                              Encoding encoding,
                                              int batchSize = 25,
+                                             CacheControlType cacheControlType = CacheControlType.None,
                                              CancellationToken cancellationToken = default);
     }
 }

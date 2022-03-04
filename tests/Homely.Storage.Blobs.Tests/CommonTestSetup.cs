@@ -10,6 +10,7 @@ namespace Homely.Storage.Blobs.Tests
     public abstract class CommonTestSetup
     {
         protected const string TestImageName = "2018-tesla-model-x-p100d.jpg";
+        protected static IList<string> CacheBlobPropertyList = new List<string> { "CacheControl" };
 
         protected SomeFakeUser TestUser => new SomeFakeUser
         {
